@@ -22,7 +22,7 @@ First, make sure that you have the proper setup before running the script:
 
 Now you are ready to run the doclet
 
-1. First `cd` into the `processing4/doclet/ReferenceGenerator` folder
+1. First `cd` into the `processing-doclet/ReferenceGenerator` folder
 2. Run `ant compile`
 3. Run `./processingrefBuild.sh` if you are updating all the repositories or `./processingrefBuild.sh processing`, `./processingrefBuild.sh sound` or `./processingrefBuild.sh video` if you are updating a single repository.
 
