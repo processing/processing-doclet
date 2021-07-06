@@ -4,7 +4,7 @@ This is a custom Doclet that generates JSON files based on Javadoc comments in `
 
 The Doclet will run through the `.java` file in the following repositories:
 
-- [`processing/processing4`](https://github.com/processing/processing4) (this repo)
+- [`processing/processing4`](https://github.com/processing/processing4)
 - [`processing/processing-sound`](https://github.com/processing/processing-sound)
 - [`processing/processing-video`](https://github.com/processing/processing-video)
 
