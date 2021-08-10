@@ -25,6 +25,7 @@ Now you are ready to run the doclet
 1. First `cd` into the `processing-doclet/ReferenceGenerator` folder
 2. Run `ant compile`
 3. Run `./processingrefBuild.sh` if you are updating all the repositories or `./processingrefBuild.sh processing`, `./processingrefBuild.sh sound` or `./processingrefBuild.sh video` if you are updating a single repository.
+4. After the new JSON files are created, move into `processing-website` and run `npx prettier --write content/references` to format the JSON
 
 If you just want to test the Doclet without the `processing-website` repo, you can create the following folder structure in the root folder and see the files:
 
