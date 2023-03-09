@@ -1,201 +1,423 @@
 package writers;
 
+import com.sun.source.doctree.DocCommentTree;
+import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.DocTree.Kind;
+import com.sun.source.doctree.EndElementTree;
+import com.sun.source.doctree.ParamTree;
+import com.sun.source.doctree.SeeTree;
+import com.sun.source.doctree.StartElementTree;
+import com.sun.source.doctree.TextTree;
+import com.sun.source.doctree.UnknownBlockTagTree;
+import com.sun.source.util.DocTrees;
+import com.sun.source.util.SimpleDocTreeVisitor;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+// Program element
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
+// Java types
+import javax.lang.model.type.TypeMirror;
+// Util classes
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
+import javax.xml.stream.events.StartElement;
+// Doclet
+import jdk.javadoc.doclet.DocletEnvironment;
 import org.w3c.dom.Document;
 
-import com.sun.javadoc.Doc;
-import com.sun.javadoc.ProgramElementDoc;
-
 public class Shared {
-//	what we're looking for
-	private static Shared instance;
-	private String webrefTagName = "webref";
-	private String seeAlsoTagName = "see_external";
-	private String coreClassName = "PApplet";
-	private ArrayList<String> descriptionSets;
 
-	//where things go
-	private String outputDirectory = "web_reference";
-	private String localOutputDirectory = "local_reference";
-	private String imageDirectory = "images";
-	private String fileExtension = ".html";
+  // where things come from
+  private String templateDirectory = "templates";
+  private String exampleDirectory = "web_examples";
+  private String includeDirectory = "include";
+  private String jsonDirectory =
+    "../../processing-website/content/references/translations/en/processing/";
 
-	//where things come from
-	private String templateDirectory = "templates";
-	private String exampleDirectory = "web_examples";
-	private String includeDirectory = "include";
-	private String jsonDirectory ="../../processing-website/content/references/translations/en/processing/";
+  // what we're looking for
+  private static Shared instance;
+  private String webrefTagName = "webref";
+  private String[] omitWebTagNames = { "nowebref", "notWebref" };
+  private String seeAlsoTagName = "see_external";
+  private String coreClassName = "PApplet";
+  private ArrayList<String> descriptionSets;
 
-	boolean noisy = false;
-	public ArrayList<String> corePackages;
-	public ArrayList<String> rootClasses;
+  // where things go
+  private String outputDirectory = "web_reference";
+  private String localOutputDirectory = "local_reference";
+  private String imageDirectory = "images";
+  private String fileExtension = ".html";
 
-	private Shared(){
-		corePackages = new ArrayList<String>();
-		rootClasses = new ArrayList<String>();
-		descriptionSets = new ArrayList<String>();
+  // utils from doclet environment
+  private DocTrees docTreeUtils;
+  private Elements elementUtils;
+  private Types typeUtils;
 
-		addDescriptionTag("description");
-	}
+  boolean noisy = false;
+  public ArrayList<String> corePackages;
+  public ArrayList<String> rootClasses;
 
-	public static Shared i()
-	{
-		if(instance == null)
-		{
-			instance = new Shared();
-		}
-		return instance;
-	}
+  private Shared() {
+    corePackages = new ArrayList<String>();
+    rootClasses = new ArrayList<String>();
+    descriptionSets = new ArrayList<String>();
 
-	public String getWebrefTagName(){
-		return webrefTagName;
-	}
+    addDescriptionTag("description");
+  }
 
-	public String getSeeAlsoTagName()
-	{
-		return seeAlsoTagName;
-	}
+  public static Shared i() {
+    if (instance == null) {
+      instance = new Shared();
+    }
+    return instance;
+  }
 
-	public void setIncludeDirectory( String s )
-	{
-		includeDirectory = s;
-	}
+  public void setUtils(DocletEnvironment environment) {
+    docTreeUtils = environment.getDocTrees();
+    elementUtils = environment.getElementUtils();
+    typeUtils = environment.getTypeUtils();
+  }
 
-	public String getIncludeDirectory()
-	{
-		return includeDirectory + "/";
-	}
+  public DocTrees getDocTreeUtils() {
+    return docTreeUtils;
+  }
 
-	public void setWebrefTagName(String webrefTagName)
-	{
-		this.webrefTagName = webrefTagName;
-	}
-	public void setCoreClassName(String coreClassName)
-	{
-		this.coreClassName = coreClassName;
-	}
-	public String getCoreClassName()
-	{
-		return coreClassName;
-	}
+  public Elements getElementUtils() {
+    return elementUtils;
+  }
 
-	public void addDescriptionTag(String s) {
-		System.out.println( "Added description tag: " + s );
-		descriptionSets.add( "/root/"+s );
-		descriptionSets.add( "/root/js_mode/"+s );
-	}
+  public Types getTypeUtils() {
+    return typeUtils;
+  }
 
-	public ArrayList<String> getDescriptionSets() {
-		return descriptionSets;
-	}
+  public void setIncludeDirectory(String directory) {
+    includeDirectory = directory;
+  }
 
-	public void setOutputDirectory(String outputDirectory) {
-		this.outputDirectory = outputDirectory;
-	}
-	public String getOutputDirectory() {
-		return outputDirectory;
-	}
-	public void setFileExtension(String fileExtension) {
-		this.fileExtension = fileExtension;
-	}
-	public String getFileExtension() {
-		return fileExtension;
-	}
-	public void setTemplateDirectory(String templateDirectory) {
-		this.templateDirectory = templateDirectory;
-	}
-	public String getTemplateDirectory() {
-		return templateDirectory;
-	}
-	public String TEMPLATE_DIRECTORY(){
-		return templateDirectory + "/";
-	}
+  public String getIncludeDirectory() {
+    return includeDirectory;
+  }
 
-	public void setExampleDirectory(String exampleDirectory) {
-		this.exampleDirectory = exampleDirectory;
-	}
-	public String getExampleDirectory() {
-		return exampleDirectory;
-	}
-	public String getJSONDirectory(){
-		return jsonDirectory + "/";
-	}
+  public String INCLUDE_DIRECTORY() {
+    return includeDirectory + "/";
+  }
 
-	public void setImageDirectory(String imageDirectory) {
-		this.imageDirectory = imageDirectory;
-	}
+  public void setWebrefTagName(String tagName) {
+    webrefTagName = tagName;
+  }
 
-	public String getImageDirectory(){
-		return imageDirectory + "/";
-	}
-	public void setLocalOutputDirectory(String localOutputDirectory) {
-		this.localOutputDirectory = localOutputDirectory;
-	}
+  public String getWebrefTagName() {
+    return webrefTagName;
+  }
 
-	public String getLocalOutputDirectory()
-	{
-		return localOutputDirectory + "/";
-	}
+  public void setSeeAlsoTagName(String tagName) {
+    seeAlsoTagName = tagName;
+  }
 
-	public String OUTPUT_DIRECTORY()
-	{
-		return outputDirectory + "/";
-	}
+  public String getSeeAlsoTagName() {
+    return seeAlsoTagName;
+  }
 
-	public boolean isCore(ProgramElementDoc doc){
-		return corePackages.contains(doc.containingPackage().name());
-	}
+  public void setCoreClassName(String newClassName) {
+    coreClassName = newClassName;
+  }
 
-	public boolean isWebref(ProgramElementDoc doc){
-		return doc.tags(webrefTagName).length > 0;
-	}
+  public String getCoreClassName() {
+    return coreClassName;
+  }
 
-	public boolean isRootLevel(ProgramElementDoc doc){
-		if(doc.isClass() || doc.isInterface()){
-			return rootClasses.contains(doc.name());
-		} else {
-			return rootClasses.contains(doc.containingClass().name());
-		}
-	}
+  public void addDescriptionTag(String tag) {
+    System.out.println("Added description tag: " + tag);
+    descriptionSets.add("/root/" + tag);
+    descriptionSets.add("/root/js_mode/" + tag);
+  }
 
-	public boolean isNoisy(){
-		return noisy;
-	}
+  public ArrayList<String> getDescriptionSets() {
+    return descriptionSets;
+  }
 
-	public void setNoisy(boolean b){
-		noisy = b;
-	}
+  public void setOutputDirectory(String directory) {
+    outputDirectory = directory;
+  }
 
-	public void createOutputDirectory(String dir){
-		System.out.println("Creating output directory: " + dir );
-		File f = new File(getLocalOutputDirectory() + dir);
-		f.mkdirs();
+  public String getOutputDirectory() {
+    return outputDirectory;
+  }
 
-		f = new File(OUTPUT_DIRECTORY() + dir);
-		f.mkdirs();
-	}
+  public void setFileExtension(String extension) {
+    fileExtension = extension;
+  }
 
-	public void createBaseDirectories(){
-		File f = new File(getLocalOutputDirectory());
-		f.mkdirs();
+  public String getFileExtension() {
+    return fileExtension;
+  }
 
-		f = new File(OUTPUT_DIRECTORY());
-		f.mkdirs();
-	}
+  public void setTemplateDirectory(String directory) {
+    templateDirectory = directory;
+  }
 
-	public boolean shouldOmit(Doc doc){
-		if( doc.tags("nowebref").length > 0 )
-		{
-			return true;
-		}
-		if( doc.tags("notWebref").length > 0 )
-		{
-			return true;
-		}
-		// if none found, we should include
-		return false;
-	}
+  public String getTemplateDirectory() {
+    return templateDirectory;
+  }
+
+  public String TEMPLATE_DIRECTORY() {
+    return templateDirectory + "/";
+  }
+
+  public void setExampleDirectory(String directory) {
+    exampleDirectory = directory;
+  }
+
+  public String getExampleDirectory() {
+    return exampleDirectory;
+  }
+
+  public String EXAMPLE_DIRECTORY() {
+    return exampleDirectory + "/";
+  }
+
+  public void setJSONDirectory(String directory) {
+    jsonDirectory = directory;
+  }
+
+  public String getJSONDirectory() {
+    return jsonDirectory;
+  }
+
+  public String JSON_DIRECTORY() {
+    return jsonDirectory + "/";
+  }
+
+  public void setImageDirectory(String directory) {
+    imageDirectory = directory;
+  }
+
+  public String getImageDirectory() {
+    return imageDirectory;
+  }
+
+  public String IMAGE_DIRECTORY() {
+    return imageDirectory + "/";
+  }
+
+  public void setLocalOutputDirectory(String directory) {
+    localOutputDirectory = directory;
+  }
+
+  public String getLocalOutputDirectory() {
+    return localOutputDirectory;
+  }
+
+  public String LOCAL_OUTPUT_DIRECTORY() {
+    return localOutputDirectory + "/";
+  }
+
+  public void seOutputDirectory(String directory) {
+    outputDirectory = directory;
+  }
+
+  public String geOutputDirectory() {
+    return outputDirectory;
+  }
+
+  public String OUTPUT_DIRECTORY() {
+    return outputDirectory + "/";
+  }
+
+  public boolean isPackage(Element element) {
+    return element.getKind() == ElementKind.PACKAGE;
+  }
+
+  public boolean isClassOrInterface(Element element) {
+    return isClass(element) || isInterface(element);
+  }
+
+  public boolean isClass(Element element) {
+    return element.getKind() == ElementKind.CLASS;
+  }
+
+  public boolean isInterface(Element element) {
+    return element.getKind() == ElementKind.INTERFACE;
+  }
+
+  public boolean isMethod(Element element) {
+    return element.getKind() == ElementKind.METHOD;
+  }
+
+  public boolean isConstructor(Element element) {
+    return element.getKind() == ElementKind.CONSTRUCTOR;
+  }
+
+  public boolean isField(Element element) {
+    return element.getKind() == ElementKind.FIELD;
+  }
+
+  public PackageElement getContainingPackage(Element element) {
+    return elementUtils.getPackageOf(element);
+  }
+
+  public boolean isRootLevel(Element element) {
+    if (isClassOrInterface(element)) {
+      TypeElement typeElement = (TypeElement) element;
+      return rootClasses.contains(typeElement.getQualifiedName().toString());
+    } else {
+      Element parent = element.getEnclosingElement();
+      if (!isClassOrInterface(parent)) return false;
+      TypeElement parentTypeElement = (TypeElement) parent;
+      return rootClasses.contains(
+        parentTypeElement.getQualifiedName().toString()
+      );
+    }
+  }
+
+  public boolean isCore(Element element) {
+    PackageElement packageElement = getContainingPackage(element);
+    if (packageElement == null) return false;
+    return corePackages.contains(packageElement.getQualifiedName().toString());
+  }
+
+  public boolean isWebref(Element element) {
+    Map<String, List<String>> elementTags = getTags(element);
+    if (elementTags.get(webrefTagName) != null) {
+      return elementTags.get(webrefTagName).size() > 0;
+    }
+    return false;
+  }
+
+  public boolean shouldOmit(Element element) {
+    Map<String, List<String>> elementTags = getTags(element);
+
+    for (String tag : omitWebTagNames) {
+      if (elementTags.get(tag) != null && elementTags.get(tag).size() > 0) {
+        return true;
+      }
+    }
+
+    // if none found, we should include
+    return false;
+  }
+
+  public Map<String, List<String>> getTags(Element element) {
+    DocCommentTree dcTree = docTreeUtils.getDocCommentTree(element);
+    Map<String, List<String>> elementTags = new TreeMap<String, List<String>>();
+    new TagScanner(elementTags).visit(dcTree, null);
+
+    return elementTags;
+  }
+
+  // TODO check if getting them separaterly is necessary
+  public List<ParamTree> getElementParamTags(Element element) {
+    List<ParamTree> params = new ArrayList<ParamTree>();
+
+    DocCommentTree dcTree = docTreeUtils.getDocCommentTree(element);
+    if (dcTree == null) return params;
+
+    for (DocTree d : dcTree.getBlockTags()) {
+      if (d.getKind() == DocTree.Kind.PARAM) {
+        params.add((ParamTree) d);
+      }
+    }
+
+    return params;
+  }
+
+  // TODO check if getting them separaterly is necessary
+  // TODO check if links are also considered
+  public List<SeeTree> getElementSeeTags(Element element) {
+    List<SeeTree> sees = new ArrayList<SeeTree>();
+
+    DocCommentTree dcTree = docTreeUtils.getDocCommentTree(element);
+    if (dcTree == null) return sees;
+
+    for (DocTree d : dcTree.getBlockTags()) {
+      if (d.getKind() == DocTree.Kind.SEE) {
+        sees.add((SeeTree) d);
+      }
+    }
+
+    return sees;
+  }
+
+  public String flatTextContent(List<? extends DocTree> content) {
+    String s = "";
+    for (DocTree d : content) {
+      if (d.getKind() == Kind.START_ELEMENT) {
+        StartElementTree se = (StartElementTree) d;
+        if (se.isSelfClosing() && se.getName().contentEquals("br")) {
+          s += "<br />";
+        } else {
+          s += d.toString();
+        }
+      } else {
+        s += d.toString();
+      }
+    }
+    return s;
+  }
+
+  public String getCommentFullBodyText(Element element) {
+    DocCommentTree commentTree = getDocTreeUtils().getDocCommentTree(element);
+    if (commentTree == null) return "";
+    return flatTextContent(commentTree.getFullBody());
+  }
+
+  public void setNoisy(boolean b) {
+    noisy = b;
+  }
+
+  public boolean isNoisy() {
+    return noisy;
+  }
+
+  public void createOutputDirectory(String dir) {
+    File f = new File(LOCAL_OUTPUT_DIRECTORY() + dir);
+    f.mkdirs();
+
+    f = new File(OUTPUT_DIRECTORY() + dir);
+    f.mkdirs();
+
+    System.out.println("\n=== Created output directory: " + dir + "===");
+  }
+
+  public void createBaseDirectories() {
+    File f = new File(LOCAL_OUTPUT_DIRECTORY());
+    f.mkdirs();
+
+    f = new File(OUTPUT_DIRECTORY());
+    f.mkdirs();
+    System.out.println("\n=== Created base directories! ===");
+  }
+
+  /**
+   * A visitor to gather the block tags found in a comment.
+   */
+  class TagScanner extends SimpleDocTreeVisitor<Void, Void> {
+
+    private final Map<String, List<String>> tags;
+
+    TagScanner(Map<String, List<String>> tags) {
+      this.tags = tags;
+    }
+
+    @Override
+    public Void visitDocComment(DocCommentTree tree, Void p) {
+      return visit(tree.getBlockTags(), null);
+    }
+
+    @Override
+    public Void visitUnknownBlockTag(UnknownBlockTagTree tree, Void p) {
+      String name = tree.getTagName();
+      String content = flatTextContent(tree.getContent());
+      tags.computeIfAbsent(name, n -> new ArrayList<>()).add(content);
+      return null;
+    }
+  }
 }

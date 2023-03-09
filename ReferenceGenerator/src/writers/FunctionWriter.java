@@ -4,59 +4,60 @@ import java.io.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import com.sun.javadoc.MethodDoc;
-import com.sun.javadoc.Tag;
+import java.util.List;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import org.json.*;
 
 public class FunctionWriter extends BaseWriter {
-	
-	static ArrayList<String> writtenFunctions;
-	
-	public FunctionWriter(){}
-	
-	public static void write(MethodDoc doc) throws IOException
-	{
-		if( needsWriting(doc)){			
-			String anchor = getAnchor(doc);
-			TemplateWriter templateWriter = new TemplateWriter();
-			
-			ArrayList<String> syntax = templateWriter.writeLoopSyntax("function.syntax.partial", getSyntax(doc, ""));
 
-			JSONObject functionJSON = new JSONObject();
+  static ArrayList<String> writtenFunctions;
 
-			String fileName = jsonDir + getName(doc).replace("()", "_") + ".json";
+  public FunctionWriter() {}
 
-			Tag[] tags = doc.tags(Shared.i().getWebrefTagName());
-			String category = getCategory(tags[0]);
-			String subcategory = getSubcategory(tags[0]);
+  public static void write(ExecutableElement element) throws IOException {
+    if (needsWriting(element)) {
+      String anchor = getAnchor(element);
+      TemplateWriter templateWriter = new TemplateWriter();
 
-			try
-			{
-				functionJSON.put("type", "function");
-      			functionJSON.put("name", getName(doc));
-      			functionJSON.put("description", getWebDescriptionFromSource(doc));
-      			functionJSON.put("brief", getWebBriefFromSource(doc));
-      			functionJSON.put("category", category);
-      			functionJSON.put("subcategory", subcategory);
-      			functionJSON.put("syntax", syntax);
-      			functionJSON.put("parameters", getParameters(doc));
-      			functionJSON.put("related", getRelated(doc));
-      			functionJSON.put("returns", getReturnTypes(doc));
-      		} catch (JSONException ex) 
-      		{
-      			ex.printStackTrace();
-      		}
+      ArrayList<String> syntax = templateWriter.writeLoopSyntax(
+        "function.syntax.partial",
+        getSyntax(element, "")
+      );
 
-      		try {
-         		FileWriter file = new FileWriter(fileName);
-         		file.write(functionJSON.toString());
-         		file.close();
-      		} catch (IOException e) {
-         		e.printStackTrace();
-      		}
-			
-		}
-		
-	}	
+      JSONObject functionJSON = new JSONObject();
+
+      String fileName = jsonDir + getName(element).replace("()", "_") + ".json";
+
+      List<String> tags = Shared
+        .i()
+        .getTags(element)
+        .get(Shared.i().getWebrefTagName());
+      String category = getCategory(tags.get(0));
+      String subcategory = getSubcategory(tags.get(0));
+
+      try {
+        functionJSON.put("type", "function");
+        functionJSON.put("name", getName(element));
+        functionJSON.put("description", getWebDescriptionFromSource(element));
+        functionJSON.put("brief", getWebBriefFromSource(element));
+        functionJSON.put("category", category);
+        functionJSON.put("subcategory", subcategory);
+        functionJSON.put("syntax", syntax);
+        functionJSON.put("parameters", getParameters(element));
+        functionJSON.put("related", getRelated(element));
+        functionJSON.put("returns", getReturnTypes(element));
+      } catch (JSONException ex) {
+        ex.printStackTrace();
+      }
+
+      try {
+        FileWriter file = new FileWriter(fileName);
+        file.write(functionJSON.toString());
+        file.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
 }
