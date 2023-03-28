@@ -96,8 +96,9 @@ public class BaseWriter {
 
     if (!Shared.i().isCore(element)) {
       //add package name to anchor
-      String[] parts = element
-        .getEnclosingElement()
+      String[] parts = Shared
+        .i()
+        .getContainingPackage(element)
         .getSimpleName()
         .toString()
         .split("\\.");
@@ -538,11 +539,8 @@ public class BaseWriter {
     return ret;
   }
 
-  // TODO: Not finished translating
   protected static ArrayList<String> getRelated(Element element)
     throws IOException {
-    TemplateWriter templateWriter = new TemplateWriter();
-    ArrayList<HashMap<String, String>> vars = new ArrayList<HashMap<String, String>>();
     ArrayList<String> related = new ArrayList<String>();
 
     // keep track of class members so that links to methods in e.g. PGraphics
@@ -554,10 +552,10 @@ public class BaseWriter {
       // fill our maps
       Element containingClass = element.getEnclosingElement();
       for (Element subElement : containingClass.getEnclosedElements()) {
-        if (Shared.i().isMethod(subElement) && needsWriting(subElement)) {
-          classMethods.put(subElement.toString(), subElement);
+        if (Shared.i().isMethod(subElement) && ((needsWriting(subElement)))) {
+          classMethods.put(subElement.getSimpleName().toString(), subElement);
         } else if (Shared.i().isField(subElement) && needsWriting(subElement)) {
-          classFields.put(subElement.toString(), subElement);
+          classFields.put(subElement.getSimpleName().toString(), subElement);
         }
       }
     }
@@ -570,30 +568,61 @@ public class BaseWriter {
       for (DocTree d : ref) {
         if (d.getKind() == Kind.REFERENCE) {
           ReferenceTree r = (ReferenceTree) d;
-          // System.out.println(
-          //   "ref from " + element + " " + d + " " + r.getSignature()
-          // );
+          String signature = r.getSignature();
+
+          Element refElement = Shared
+            .i()
+            .getElementFromSignature(signature, element);
+
+          if (refElement != null) {
+            if (
+              Shared.i().isMethod(refElement) &&
+              classMethods.containsKey(refElement.getSimpleName().toString())
+            ) {
+              // link to the member as it is in this class, instead of
+              // as it is in another class
+              Element prior = classMethods.get(
+                refElement.getSimpleName().toString()
+              );
+
+              refElement = prior;
+            } else if (
+              Shared.i().isField(refElement) &&
+              classFields.containsKey(refElement.getSimpleName().toString())
+            ) {
+              Element prior = classFields.get(
+                refElement.getSimpleName().toString()
+              );
+              refElement = prior;
+            }
+          }
+          if (
+            needsWriting(refElement) || syntaxEquivalentNeedsWriting(refElement)
+          ) {
+            // add links to things that are actually written
+            map.put("anchor", getAnchor(refElement));
+            related.add(getAnchor(refElement));
+          } else if (refElement != null) {
+            System.out.println(
+              "[RELATED ERROR] Related reference found but not in webref : " +
+              refElement +
+              " from " +
+              element.getEnclosingElement().getSimpleName().toString() +
+              "#" +
+              element
+            );
+          } else {
+            System.out.println(
+              "[RELATED ERROR] Related reference not found or misspelled \"" +
+              signature +
+              "\" from " +
+              element.getEnclosingElement().getSimpleName().toString() +
+              "#" +
+              element
+            );
+          }
         }
       }
-      // if( tag.referencedMember() != null )
-      // {
-      // 	ref = tag.referencedMember();
-      // 	if( ref.isMethod() && classMethods.containsKey( ref.name() ) ) {
-      // 		// link to the member as it is in this class, instead of
-      // 		// as it is in another class
-      // 		ProgramElementDoc prior = classMethods.get( ref.name() );
-      // 		ref = prior;
-      // 	}
-      // 	else if ( ref.isField() && classFields.containsKey( ref.name() ) ) {
-      // 		ProgramElementDoc prior = classFields.get( ref.name() );
-      // 		ref = prior;
-      // 	}
-      // }
-      // if( needsWriting( ref ) ) {
-      // 	// add links to things that are actually written
-      // 	map.put("anchor", getAnchor( ref ));
-      // 	related.add(getAnchor(ref));
-      // }
     }
 
     // add link to each @see_external item
@@ -623,6 +652,35 @@ public class BaseWriter {
 
   protected static boolean needsWriting(Element element) {
     return (element != null) && Shared.i().isWebref(element);
+  }
+
+  protected static boolean syntaxEquivalentNeedsWriting(Element element) {
+    if (
+      element == null ||
+      !(Shared.i().isMethod(element) | Shared.i().isConstructor(element))
+    ) return false;
+
+    boolean exists = false;
+    for (Element subElement : element
+      .getEnclosingElement()
+      .getEnclosedElements()) {
+      if (
+        !Shared.i().isMethod(subElement) || Shared.i().shouldOmit(subElement)
+      ) {
+        continue;
+      }
+
+      ExecutableElement methodElement = (ExecutableElement) subElement;
+
+      if (methodElement.getSimpleName().equals(element.getSimpleName())) {
+        if (Shared.i().isWebref(subElement)) {
+          exists = true;
+          break;
+        }
+      }
+    }
+
+    return exists;
   }
 
   public static String getCategory(String webref) {

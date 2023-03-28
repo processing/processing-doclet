@@ -20,100 +20,98 @@ public class ClassWriter extends BaseWriter {
 
   @SuppressWarnings("unchecked")
   public void write(TypeElement element) throws IOException {
-    if (needsWriting(element)) {
-      this.element = element;
-      String classname = getName(element);
-      String anchor = getAnchor(element);
+    if (!needsWriting(element)) return;
 
-      HashMap<String, String> vars = new HashMap<String, String>();
+    this.element = element;
+    String classname = getName(element);
+    String anchor = getAnchor(element);
 
-      JSONObject classJSON = new JSONObject();
+    HashMap<String, String> vars = new HashMap<String, String>();
 
-      String fileName, folderName;
-      if (libDir != null) {
-        fileName = libDir + classname + ".json";
-        folderName = libDir;
-      } else {
-        fileName = jsonDir + classname + ".json";
-        folderName = jsonDir;
+    JSONObject classJSON = new JSONObject();
+
+    String fileName, folderName;
+    if (libDir != null) {
+      fileName = libDir + classname + ".json";
+      folderName = libDir;
+    } else {
+      fileName = jsonDir + classname + ".json";
+      folderName = jsonDir;
+    }
+
+    List<String> tags = Shared
+      .i()
+      .getTags(element)
+      .get(Shared.i().getWebrefTagName());
+    String category = getCategory(tags.get(0));
+    String subcategory = getSubcategory(tags.get(0));
+
+    try {
+      classJSON.put("type", "class");
+      // These vars will be inherited by method and field writers
+      classJSON.put("name", classname);
+      classJSON.put("classanchor", anchor);
+      String desc = getWebDescriptionFromSource(element);
+      if (desc != "") {
+        classJSON.put("description", desc);
+      }
+      if (!Shared.i().isCore(element)) { // documenting a library
+        classJSON.put("isLibrary", "true");
+        classJSON.put("csspath", "../../");
       }
 
-      List<String> tags = Shared
-        .i()
-        .getTags(element)
-        .get(Shared.i().getWebrefTagName());
-      String category = getCategory(tags.get(0));
-      String subcategory = getSubcategory(tags.get(0));
+      classJSON.put("brief", getWebBriefFromSource(element));
 
-      try {
-        classJSON.put("type", "class");
-        // These vars will be inherited by method and field writers
-        classJSON.put("name", classname);
-        classJSON.put("classanchor", anchor);
-        String desc = getWebDescriptionFromSource(element);
-        if (desc != "") {
-          classJSON.put("description", desc);
-        }
-        if (!Shared.i().isCore(element)) { // documenting a library
-          classJSON.put("isLibrary", "true");
-          classJSON.put("csspath", "../../");
-        }
+      ArrayList<JSONObject> methodSet = new ArrayList<JSONObject>();
+      ArrayList<JSONObject> fieldSet = new ArrayList<JSONObject>();
 
-        classJSON.put("brief", getWebBriefFromSource(element));
+      // Write all @webref methods for core classes (the tag tells us where to link to it in the index)
 
-        ArrayList<JSONObject> methodSet = new ArrayList<JSONObject>();
-        ArrayList<JSONObject> fieldSet = new ArrayList<JSONObject>();
-
-        // Write all @webref methods for core classes (the tag tells us where to link to it in the index)
-
-        for (Element subElement : element.getEnclosedElements()) {
-          if (Shared.i().isMethod(subElement) && needsWriting(subElement)) {
-            ExecutableElement methodElement = (ExecutableElement) subElement;
-            if (
-              !classname.equals("PGraphics") ||
-              getName(methodElement).equals("beginDraw()") ||
-              getName(methodElement).equals("endDraw()")
-            ) {
-              MethodWriter.write(
-                (HashMap<String, String>) vars.clone(),
-                methodElement,
-                classname,
-                folderName
-              );
-              methodSet.add(getPropertyInfo(methodElement));
-            }
-          } else if (
-            Shared.i().isField(subElement) && needsWriting(subElement)
+      for (Element subElement : element.getEnclosedElements()) {
+        if (Shared.i().isMethod(subElement) && needsWriting(subElement)) {
+          ExecutableElement methodElement = (ExecutableElement) subElement;
+          if (
+            !classname.equals("PGraphics") ||
+            getName(methodElement).equals("beginDraw()") ||
+            getName(methodElement).equals("endDraw()")
           ) {
-            VariableElement fieldElement = (VariableElement) subElement;
-            FieldWriter.write(
+            MethodWriter.write(
               (HashMap<String, String>) vars.clone(),
-              fieldElement,
-              classname
+              methodElement,
+              classname,
+              folderName
             );
-            fieldSet.add(getPropertyInfo(fieldElement));
+            methodSet.add(getPropertyInfo(methodElement));
           }
+        } else if (Shared.i().isField(subElement) && needsWriting(subElement)) {
+          VariableElement fieldElement = (VariableElement) subElement;
+          FieldWriter.write(
+            (HashMap<String, String>) vars.clone(),
+            fieldElement,
+            classname
+          );
+          fieldSet.add(getPropertyInfo(fieldElement));
         }
-
-        ArrayList<String> constructors = getConstructors();
-        classJSON.put("category", category);
-        classJSON.put("subcategory", subcategory);
-        classJSON.put("methods", methodSet);
-        classJSON.put("classFields", fieldSet);
-        classJSON.put("constructors", constructors);
-        classJSON.put("parameters", getParameters());
-        classJSON.put("related", getRelated(element));
-      } catch (JSONException ex) {
-        ex.printStackTrace();
       }
 
-      try {
-        FileWriter file = new FileWriter(fileName);
-        file.write(classJSON.toString());
-        file.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+      ArrayList<String> constructors = getConstructors();
+      classJSON.put("category", category);
+      classJSON.put("subcategory", subcategory);
+      classJSON.put("methods", methodSet);
+      classJSON.put("classFields", fieldSet);
+      classJSON.put("constructors", constructors);
+      classJSON.put("parameters", getParameters());
+      classJSON.put("related", getRelated(element));
+    } catch (JSONException ex) {
+      ex.printStackTrace();
+    }
+
+    try {
+      FileWriter file = new FileWriter(fileName);
+      file.write(classJSON.toString());
+      file.close();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 

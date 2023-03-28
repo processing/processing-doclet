@@ -210,10 +210,12 @@ public class ProcessingWeblet extends StandardDoclet {
   @Override
   public boolean run(DocletEnvironment environment) {
     Shared.i().corePackages.add("processing.core");
+
     Shared.i().rootClasses.add("processing.core.PApplet");
     Shared.i().rootClasses.add("processing.core.PConstants");
 
     Shared.i().setUtils(environment);
+    Shared.i().loadIncludedPackages(environment);
 
     Shared.i().createBaseDirectories();
 
@@ -246,8 +248,9 @@ public class ProcessingWeblet extends StandardDoclet {
       }
 
       TypeElement classElement = (TypeElement) element;
-
-      System.out.println("\nElement: " + classElement);
+      if (Shared.i().isNoisy()) {
+        System.out.println("Load element: " + classElement);
+      }
 
       if (Shared.i().isCore(classElement)) {
         // Document the core functions and classes
@@ -259,31 +262,35 @@ public class ProcessingWeblet extends StandardDoclet {
             // document functions
             if (Shared.i().isMethod(subElement)) {
               ExecutableElement methodElement = (ExecutableElement) subElement;
-
-              System.out.println("method!: " + methodElement);
-
-              FunctionWriter.write(methodElement);
+              if (Shared.i().isWebref(methodElement)) {
+                if (Shared.i().isNoisy()) {
+                  System.out.println("Load root function: " + methodElement);
+                }
+                FunctionWriter.write(methodElement);
+              }
             }
             // also need to add fields
             if (Shared.i().isField(subElement)) {
               VariableElement fieldElement = (VariableElement) subElement;
 
-              System.out.println("field!: " + fieldElement);
-
               if (Shared.i().isWebref(fieldElement)) {
+                if (Shared.i().isNoisy()) {
+                  System.out.println("Load root field: " + fieldElement);
+                }
                 FieldWriter.write(fieldElement);
               }
             }
           }
         } else {
           // document a class and its public properties
-          System.out.println("class!: " + classElement);
+
+          System.out.println("Load class. ");
           new ClassWriter().write(classElement);
         }
       } else {
         // Document the library passed in
         if (Shared.i().isNoisy()) {
-          System.out.println("Loaded class: " + classElement.toString());
+          System.out.println("Load library. ");
         }
 
         PackageElement packageElement = Shared
@@ -293,13 +300,6 @@ public class ProcessingWeblet extends StandardDoclet {
         if (packageElement == null) {
           continue;
         }
-
-        // System.out.println(
-        //   "ok lets see this parent " +
-        //   packageElement +
-        //   " " +
-        //   packageElement.getKind()
-        // );
 
         LibraryWriter writer = new LibraryWriter();
         writer.write(packageElement);

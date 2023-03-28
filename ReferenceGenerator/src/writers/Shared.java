@@ -17,11 +17,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 // Program element
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 // Java types
 import javax.lang.model.type.TypeMirror;
@@ -62,10 +66,12 @@ public class Shared {
   private Types typeUtils;
 
   boolean noisy = false;
+  public ArrayList<String> includedPackages;
   public ArrayList<String> corePackages;
   public ArrayList<String> rootClasses;
 
   private Shared() {
+    includedPackages = new ArrayList<String>();
     corePackages = new ArrayList<String>();
     rootClasses = new ArrayList<String>();
     descriptionSets = new ArrayList<String>();
@@ -84,6 +90,15 @@ public class Shared {
     docTreeUtils = environment.getDocTrees();
     elementUtils = environment.getElementUtils();
     typeUtils = environment.getTypeUtils();
+  }
+
+  public void loadIncludedPackages(DocletEnvironment environment) {
+    for (Element element : environment.getIncludedElements()) {
+      if (isPackage(element)) {
+        PackageElement packageElement = (PackageElement) element;
+        includedPackages.add(packageElement.getQualifiedName().toString());
+      }
+    }
   }
 
   public DocTrees getDocTreeUtils() {
@@ -264,6 +279,16 @@ public class Shared {
     return elementUtils.getPackageOf(element);
   }
 
+  public TypeElement getContainingClass(Element element) {
+    TypeElement containingClass = null;
+    if (isClass(element)) {
+      containingClass = (TypeElement) element;
+    } else if (!isPackage(element)) {
+      containingClass = (TypeElement) element.getEnclosingElement();
+    }
+    return containingClass;
+  }
+
   public boolean isRootLevel(Element element) {
     if (isClassOrInterface(element)) {
       TypeElement typeElement = (TypeElement) element;
@@ -303,6 +328,99 @@ public class Shared {
 
     // if none found, we should include
     return false;
+  }
+
+  public boolean debug = false;
+
+  public Element getElementFromSignature(
+    String signature,
+    Element baseElement
+  ) {
+    if (debug) {
+      System.out.println("signature: " + signature);
+      System.out.println("baseElement: " + baseElement);
+    }
+    String baseSignature = signature;
+    if (baseSignature.charAt(0) == '#') {
+      TypeElement containingClass = getContainingClass(baseElement);
+      baseSignature =
+        containingClass.getSimpleName().toString() + baseSignature;
+    }
+
+    String[] signatureSections = baseSignature.split("#");
+    String classSignature = "";
+    String memberSignature =
+      signatureSections[signatureSections.length - 1].replace(" ", "")
+        .replace("\n", "");
+
+    boolean isJustClass = signatureSections.length == 1;
+
+    TypeElement classElement;
+
+    if (isJustClass) {
+      classElement = getElementUtils().getTypeElement(memberSignature);
+      if (classElement == null) {
+        for (String potentialPackage : includedPackages) {
+          classElement =
+            getElementUtils()
+              .getTypeElement(potentialPackage + "." + memberSignature);
+
+          if (classElement != null) break;
+        }
+      }
+      return classElement;
+    }
+
+    if (signatureSections.length > 1) {
+      for (int index = 0; index < signatureSections.length - 1; index++) {
+        if (classSignature.length() > 0) {
+          classSignature += ".";
+        }
+        classSignature += signatureSections[index];
+      }
+    }
+
+    classElement = getElementUtils().getTypeElement(classSignature);
+    if (classElement == null) {
+      for (String potentialPackage : includedPackages) {
+        classElement =
+          getElementUtils()
+            .getTypeElement(potentialPackage + "." + classSignature);
+
+        if (classElement != null) break;
+      }
+    }
+    if (classElement == null) return null;
+
+    for (Element subElement : classElement.getEnclosedElements()) {
+      String noSpacesName = subElement.toString().replace(" ", "");
+      if (isField(subElement)) {
+        if (noSpacesName.equals(memberSignature)) {
+          return subElement;
+        }
+      } else if (isMethod(subElement) || isConstructor(subElement)) {
+        ExecutableElement sub = (ExecutableElement) (subElement);
+        String name = subElement.getSimpleName().toString() + "(";
+        boolean addedParam = false;
+        for (VariableElement par : sub.getParameters()) {
+          String[] a = par.asType().toString().split("[.]");
+          if (addedParam) {
+            name += ",";
+          }
+          name += a[a.length - 1];
+          if (!addedParam) {
+            addedParam = true;
+          }
+        }
+        name += ")";
+
+        if (name.equals(memberSignature)) {
+          return subElement;
+        }
+      }
+    }
+
+    return null;
   }
 
   public Map<String, List<String>> getTags(Element element) {
