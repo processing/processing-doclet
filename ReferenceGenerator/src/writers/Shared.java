@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -330,16 +331,43 @@ public class Shared {
     return false;
   }
 
-  public boolean debug = false;
+  public TypeElement getClassElement(String signature) {
+    TypeElement classElement = getElementUtils().getTypeElement(signature);
+    if (classElement == null) {
+      for (String potentialPackage : includedPackages) {
+        classElement =
+          getElementUtils().getTypeElement(potentialPackage + "." + signature);
+
+        if (classElement != null) break;
+      }
+    }
+    return classElement;
+  }
+
+  public String getSimpleSyntaxName(ExecutableElement element) {
+    String name = element.getSimpleName().toString() + "(";
+    boolean addedAParam = false;
+    for (VariableElement par : element.getParameters()) {
+      String[] a = par.asType().toString().split("[.]");
+      if (addedAParam) {
+        name += ",";
+      }
+      name += a[a.length - 1];
+      if (!addedAParam) {
+        addedAParam = true;
+      }
+    }
+    name += ")";
+    return name;
+  }
 
   public Element getElementFromSignature(
     String signature,
     Element baseElement
   ) {
-    if (debug) {
-      System.out.println("signature: " + signature);
-      System.out.println("baseElement: " + baseElement);
-    }
+    TypeElement classElement = null;
+    Element memberElement = null;
+
     String baseSignature = signature;
     if (baseSignature.charAt(0) == '#') {
       TypeElement containingClass = getContainingClass(baseElement);
@@ -353,22 +381,9 @@ public class Shared {
       signatureSections[signatureSections.length - 1].replace(" ", "")
         .replace("\n", "");
 
-    boolean isJustClass = signatureSections.length == 1;
-
-    TypeElement classElement;
-
-    if (isJustClass) {
-      classElement = getElementUtils().getTypeElement(memberSignature);
-      if (classElement == null) {
-        for (String potentialPackage : includedPackages) {
-          classElement =
-            getElementUtils()
-              .getTypeElement(potentialPackage + "." + memberSignature);
-
-          if (classElement != null) break;
-        }
-      }
-      return classElement;
+    if (signatureSections.length == 1) {
+      memberElement = getClassElement(memberSignature);
+      return memberElement;
     }
 
     if (signatureSections.length > 1) {
@@ -380,47 +395,27 @@ public class Shared {
       }
     }
 
-    classElement = getElementUtils().getTypeElement(classSignature);
-    if (classElement == null) {
-      for (String potentialPackage : includedPackages) {
-        classElement =
-          getElementUtils()
-            .getTypeElement(potentialPackage + "." + classSignature);
-
-        if (classElement != null) break;
-      }
-    }
+    classElement = getClassElement(classSignature);
     if (classElement == null) return null;
 
     for (Element subElement : classElement.getEnclosedElements()) {
-      String noSpacesName = subElement.toString().replace(" ", "");
+      String nameWithNoSpaces = subElement.toString().replace(" ", "");
       if (isField(subElement)) {
-        if (noSpacesName.equals(memberSignature)) {
-          return subElement;
+        if (nameWithNoSpaces.equals(memberSignature)) {
+          memberElement = subElement;
+          break;
         }
       } else if (isMethod(subElement) || isConstructor(subElement)) {
         ExecutableElement sub = (ExecutableElement) (subElement);
-        String name = subElement.getSimpleName().toString() + "(";
-        boolean addedParam = false;
-        for (VariableElement par : sub.getParameters()) {
-          String[] a = par.asType().toString().split("[.]");
-          if (addedParam) {
-            name += ",";
-          }
-          name += a[a.length - 1];
-          if (!addedParam) {
-            addedParam = true;
-          }
-        }
-        name += ")";
-
+        String name = getSimpleSyntaxName(sub);
         if (name.equals(memberSignature)) {
-          return subElement;
+          memberElement = subElement;
+          break;
         }
       }
     }
 
-    return null;
+    return memberElement;
   }
 
   public Map<String, List<String>> getTags(Element element) {
@@ -431,7 +426,6 @@ public class Shared {
     return elementTags;
   }
 
-  // TODO check if getting them separaterly is necessary
   public List<ParamTree> getElementParamTags(Element element) {
     List<ParamTree> params = new ArrayList<ParamTree>();
 
@@ -447,8 +441,6 @@ public class Shared {
     return params;
   }
 
-  // TODO check if getting them separaterly is necessary
-  // TODO check if links are also considered
   public List<SeeTree> getElementSeeTags(Element element) {
     List<SeeTree> sees = new ArrayList<SeeTree>();
 
@@ -467,16 +459,7 @@ public class Shared {
   public String flatTextContent(List<? extends DocTree> content) {
     String s = "";
     for (DocTree d : content) {
-      if (d.getKind() == Kind.START_ELEMENT) {
-        StartElementTree se = (StartElementTree) d;
-        if (se.isSelfClosing() && se.getName().contentEquals("br")) {
-          s += "<br />";
-        } else {
-          s += d.toString();
-        }
-      } else {
-        s += d.toString();
-      }
+      s += d.toString();
     }
     return s;
   }

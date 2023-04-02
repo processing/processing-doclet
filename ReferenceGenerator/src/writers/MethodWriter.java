@@ -25,7 +25,6 @@ public class MethodWriter extends BaseWriter {
     String classname,
     String foldername
   ) throws IOException {
-    String filename = getAnchor(element);
     TemplateWriter templateWriter = new TemplateWriter();
 
     ArrayList<String> syntax = templateWriter.writeLoopSyntax(

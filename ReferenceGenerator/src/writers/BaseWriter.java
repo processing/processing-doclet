@@ -6,10 +6,8 @@ import com.sun.source.doctree.ParamTree;
 import com.sun.source.doctree.ReferenceTree;
 import com.sun.source.doctree.SeeTree;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.ProcessBuilder.Redirect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -18,12 +16,12 @@ import java.util.Locale;
 import java.util.TimeZone;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import org.json.*;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
 
 public class BaseWriter {
 
@@ -167,16 +165,24 @@ public class BaseWriter {
     return str;
   }
 
+  protected static String getDimensionality(Element element) {
+    String dimensionality = "";
+    TypeMirror type = element.asType();
+    while (type.getKind() == TypeKind.ARRAY) {
+      dimensionality = dimensionality.concat("[]");
+      ArrayType arrayType = (ArrayType) type;
+      type = arrayType.getComponentType();
+    }
+    return dimensionality;
+  }
+
   protected static String getName(Element element) { // handle
     String ret = element.getSimpleName().toString();
     if (Shared.i().isMethod(element)) {
       ret = ret.concat("()");
     } else if (Shared.i().isField(element)) {
       // add [] if needed
-      // TODO: doesn't currently add concat for multi-dimensional array
-      if (element.asType().getKind() == TypeKind.ARRAY) {
-        ret = ret.concat("[]");
-      }
+      ret = ret.concat(getDimensionality(element));
     }
     return ret;
   }
@@ -297,6 +303,7 @@ public class BaseWriter {
       ) {
         continue;
       }
+      if (subElement.getModifiers().contains(Modifier.PROTECTED)) continue;
 
       ExecutableElement methodElement = (ExecutableElement) subElement;
 
@@ -412,6 +419,8 @@ public class BaseWriter {
       ) {
         continue;
       }
+      if (subElement.getModifiers().contains(Modifier.PROTECTED)) continue;
+
       ExecutableElement method = (ExecutableElement) subElement;
       if (subElement.getSimpleName().equals(element.getSimpleName())) {
         ret.addAll(parseParameters(method));

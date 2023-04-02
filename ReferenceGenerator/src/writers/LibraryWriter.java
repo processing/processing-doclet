@@ -1,6 +1,5 @@
 package writers;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.lang.model.element.Element;
@@ -34,6 +33,9 @@ public class LibraryWriter extends BaseWriter {
     String name = element.getSimpleName().toString();
 
     if (writtenLibraries.contains(name)) {
+      if (Shared.i().isNoisy()) {
+        System.out.println("Already processed " + name + ". Skipping.");
+      }
       return;
     }
     writtenLibraries.add(name);
@@ -49,6 +51,11 @@ public class LibraryWriter extends BaseWriter {
         TypeElement classElement = (TypeElement) subElement;
         // document the class if it has a @webref tag
         try {
+          if (Shared.i().isNoisy()) {
+            System.out.println(
+              "Loading: " + classElement.getQualifiedName().toString() + "."
+            );
+          }
           new ClassWriter().write(classElement, dir);
         } catch (IOException e) {
           // TODO Auto-generated catch block
