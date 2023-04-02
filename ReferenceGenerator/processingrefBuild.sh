@@ -5,7 +5,14 @@ echo "[REFERENCE GENERATOR] Booting up..."
 # PROCESSING_SRC_PATH=./test
 PROCESSING_SRC_PATH=../../processing4/core/src
 PROCESSING_LIB_PATH=../../processing4/java/libraries
+PROCESSING_VIDEO_PATH=../../processing-video
+PROCESSING_SOUND_PATH=../../processing-sound
+
+DOCLET_PATH=bin/:lib/org.json.jar
+SOURCE_PATH=../../processing4/core/bin
 REFERENCES_OUT_PATH=../../processing-website/content/references/translations/en
+CLASS_PATH="$PROCESSING_SRC_PATH/../library/*:$PROCESSING_LIB_PATH/serial/library/*:$PROCESSING_LIB_PATH/io/library/*:$PROCESSING_LIB_PATH/net/library/*:$PROCESSING_VIDEO_PATH/library/*:$PROCESSING_SOUND_PATH/library/*"
+
 # GENERATE REFERENCE ENTRIES AND INDEX THROUGH JAVADOC - BY DAVID WICKS
 
 echo "[REFERENCE GENERATOR] Source Path :: $PROCESSING_SRC_PATH"
@@ -25,8 +32,8 @@ if [ $# -eq 0 ]
     			$PROCESSING_LIB_PATH/io/src/processing/io/*.java \
     			$PROCESSING_LIB_PATH/net/src/processing/net/*.java \
     			$PROCESSING_LIB_PATH/serial/src/processing/serial/*.java \
-    			$PROCESSING_LIB_PATH/../../../processing-video/src/processing/video/*.java \
-    			$PROCESSING_LIB_PATH/../../../processing-sound/src/processing/sound/*.java"
+    			$PROCESSING_VIDEO_PATH/src/processing/video/*.java \
+    			$PROCESSING_SOUND_PATH/src/processing/sound/*.java"
   elif [ $1 = "processing" ]
   then
     echo "Generating processing references"
@@ -38,20 +45,30 @@ if [ $# -eq 0 ]
           $PROCESSING_LIB_PATH/io/src/processing/io/*.java \
           $PROCESSING_LIB_PATH/net/src/processing/net/*.java \
           $PROCESSING_LIB_PATH/serial/src/processing/serial/*.java"
-  else
-  	echo "Generating $1 library"
+  elif [ $1 = "video" ]
+  then
+  	echo "Generating video library"
   	echo "[REFERENCE GENERATOR] Removing previous version of the ref..."
-  	FOLDERS="$PROCESSING_LIB_PATH/../../../processing-$1/src/processing/$1/*.java"
+  	FOLDERS="$PROCESSING_VIDEO_PATH/src/processing/video/*.java"
+  elif [ $1 = "sound" ]
+  then
+  	echo "Generating sound library"
+  	echo "[REFERENCE GENERATOR] Removing previous version of the ref..."
+  	FOLDERS="$PROCESSING_SOUND_PATH/src/processing/sound/*.java"
+  else
+    echo "Option '$1' not valid. Should be 'processing', 'sound' or 'video'"
 fi
 
 echo "[REFERENCE GENERATOR] Generating new javadocs..."
 javadoc -doclet ProcessingWeblet \
-        -docletpath "bin/:lib/org.json.jar" \
+        -docletpath $DOCLET_PATH \
+        --source-path $SOURCE_PATH \
+        --class-path $CLASS_PATH \
         -public \
 	-templatedir ../templates \
 	-examplesdir ../../content/api_en \
 	-includedir ../../content/api_en/include \
 	-imagedir images \
 	-encoding UTF-8 \
-	$FOLDERS \
+  $FOLDERS \
 	-noisy
