@@ -26,6 +26,7 @@ if [ $# -eq 0 ]
     echo "No arguments supplied, generating everything"
     echo "[REFERENCE GENERATOR] Removing previous version of the ref..."
     FOLDERS="$PROCESSING_SRC_PATH/processing/core/*.java \
+        	$PROCESSING_SRC_PATH/processing/awt/*.java \
     			$PROCESSING_SRC_PATH/processing/data/*.java \
     			$PROCESSING_SRC_PATH/processing/event/*.java \
     			$PROCESSING_SRC_PATH/processing/opengl/*.java \
