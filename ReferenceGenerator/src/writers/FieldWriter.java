@@ -1,120 +1,125 @@
 package writers;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.ArrayList;
+
 import java.io.*;
-
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.FieldDoc;
-import com.sun.javadoc.Tag;
-
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.VariableElement;
 import org.json.*;
 
-
 public class FieldWriter extends BaseWriter {
-	
-	/**
-	 * 
-	 * @param vars inherited from containing ClassDoc
-	 * @param doc
-	 * @throws IOException
-	 */
-	
-	public static void write(HashMap<String, String> vars, FieldDoc doc, String classname) throws IOException
-	{
-		TemplateWriter templateWriter = new TemplateWriter();
 
-		JSONObject fieldJSON = new JSONObject();
+  /**
+   *
+   * @param vars inherited from containing ClassDoc
+   * @param doc
+   * @throws IOException
+   */
 
-		String fieldName;
-		if (getName(doc).contains("[]"))  {
-			fieldName = getName(doc).replace("[]", "");
-		} else {
-			fieldName = getName(doc);
-		}
+  public static void write(
+    HashMap<String, String> vars,
+    VariableElement element,
+    String classname
+  ) throws IOException {
+    TemplateWriter templateWriter = new TemplateWriter();
 
-		String fileName;
-		if (classname != "") {
-			fileName = jsonDir + classname + "_" + fieldName + ".json";
-		} else {
-			fileName = jsonDir + fieldName + ".json";
-		}
+    JSONObject fieldJSON = new JSONObject();
 
-		Tag[] tags = doc.tags(Shared.i().getWebrefTagName());
-		String category = getCategory(tags[0]);
-		String subcategory = getSubcategory(tags[0]);
+    String fieldName;
+    if (getName(element).contains("[]")) {
+      fieldName = getName(element).replace("[]", "");
+    } else {
+      fieldName = getName(element);
+    }
 
-		try
-		{
-			fieldJSON.put("description", getWebDescriptionFromSource(doc));
-			fieldJSON.put("brief", getWebBriefFromSource(doc));
-			fieldJSON.put("category", category);
-      		fieldJSON.put("subcategory", subcategory);
-			fieldJSON.put("name", getName(doc));
-			fieldJSON.put("related", getRelated(doc));
-		
-			if(Shared.i().isRootLevel(doc.containingClass())){
-				fieldJSON.put("type", "other");
-			} else {
-				fieldJSON.put("type", "field");
-				fieldJSON.put("classanchor", getLocalAnchor(doc.containingClass()));
-				fieldJSON.put("parameters", getParentParam(doc));		
-				String syntax = templateWriter.writePartial("field.syntax.partial", getSyntax(doc));
-				ArrayList<String> syntaxList = new ArrayList<String>();
-				syntaxList.add(syntax);
-				fieldJSON.put("syntax", syntaxList);	
-			}
-		} catch (JSONException ex) 
-      	{
-      		ex.printStackTrace();
-      	}
+    String fileName;
+    if (classname != "") {
+      fileName = jsonDir + classname + "_" + fieldName + ".json";
+    } else {
+      fileName = jsonDir + fieldName + ".json";
+    }
 
-      	try {
-         	FileWriter file = new FileWriter(fileName);
-         	file.write(fieldJSON.toString());
-         	file.close();
-      	} catch (IOException e) {
-         	e.printStackTrace();
-      	}
-		
-	}
-	
-	public static void write(FieldDoc doc) throws IOException
-	{
-		String classname = "";
-		write(new HashMap<String, String>(), doc, classname);
-	}
-	
-	protected static HashMap<String, String> getSyntax(FieldDoc doc){
-		HashMap<String, String> map = new HashMap<String, String>();
-		map.put("object", getInstanceName(doc));
-		map.put("field", getName(doc));
-		return map;
-	}
+    List<String> tags = Shared
+      .i()
+      .getTags(element)
+      .get(Shared.i().getWebrefTagName());
+    String category = getCategory(tags.get(0));
+    String subcategory = getSubcategory(tags.get(0));
 
-	protected static ArrayList<JSONObject> getParentParam(FieldDoc doc){
-		ArrayList<JSONObject> retList = new ArrayList<JSONObject>();
-		JSONObject ret = new JSONObject();
-		try
-		{
-			ret.put("name", getInstanceName(doc));
-			ret.put("desc", getInstanceDescription(doc));
-		} catch (JSONException ex) 
-      	{
-      		ex.printStackTrace();
-      	}
-      	retList.add(ret);
-		return retList;
-	}
-	
-	protected static HashMap<String, String> getParent(FieldDoc doc){
-		HashMap<String, String> parent = new HashMap<String, String>();
-		ClassDoc cd = doc.containingClass();
-		parent.put("name", getInstanceName(doc));
-		parent.put("name", getInstanceName(doc));
-	 	parent.put("type", cd.name());
-		parent.put("description", getInstanceDescription(doc));
-		return parent;
-	}
+    try {
+      fieldJSON.put("description", getWebDescriptionFromSource(element));
+      fieldJSON.put("brief", getWebBriefFromSource(element));
+      fieldJSON.put("category", category);
+      fieldJSON.put("subcategory", subcategory);
+      fieldJSON.put("name", getName(element));
+      fieldJSON.put("related", getRelated(element));
 
+      if (Shared.i().isRootLevel(element.getEnclosingElement())) {
+        fieldJSON.put("type", "other");
+      } else {
+        fieldJSON.put("type", "field");
+        fieldJSON.put(
+          "classanchor",
+          getLocalAnchor(element.getEnclosingElement())
+        );
+        fieldJSON.put("parameters", getParentParam(element));
+        String syntax = templateWriter.writePartial(
+          "field.syntax.partial",
+          getSyntax(element)
+        );
+        ArrayList<String> syntaxList = new ArrayList<String>();
+        syntaxList.add(syntax);
+        fieldJSON.put("syntax", syntaxList);
+      }
+    } catch (JSONException ex) {
+      ex.printStackTrace();
+    }
+
+    try {
+      FileWriter file = new FileWriter(fileName);
+      file.write(fieldJSON.toString());
+      file.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void write(VariableElement element) throws IOException {
+    String classname = "";
+    write(new HashMap<String, String>(), element, classname);
+  }
+
+  protected static HashMap<String, String> getSyntax(VariableElement element) {
+    HashMap<String, String> map = new HashMap<String, String>();
+    map.put("object", getInstanceName(element));
+    map.put("field", getName(element));
+    return map;
+  }
+
+  protected static ArrayList<JSONObject> getParentParam(
+    VariableElement element
+  ) {
+    ArrayList<JSONObject> retList = new ArrayList<JSONObject>();
+    JSONObject ret = new JSONObject();
+    try {
+      ret.put("name", getInstanceName(element));
+      ret.put("desc", getInstanceDescription(element));
+    } catch (JSONException ex) {
+      ex.printStackTrace();
+    }
+    retList.add(ret);
+    return retList;
+  }
+
+  protected static HashMap<String, String> getParent(VariableElement element) {
+    HashMap<String, String> parent = new HashMap<String, String>();
+    Element cd = element.getEnclosingElement();
+    parent.put("name", getInstanceName(element));
+    parent.put("name", getInstanceName(element));
+    parent.put("type", cd.getSimpleName().toString());
+    parent.put("description", getInstanceDescription(element));
+    return parent;
+  }
 }
