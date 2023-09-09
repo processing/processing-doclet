@@ -375,7 +375,11 @@ public class BaseWriter {
     if (tags != null && tags.size() > 0) {
       return tags.get(0).split("\\s")[0];
     }
-    return "";
+    if (element.getModifiers().contains(Modifier.STATIC)) {
+      return element.getEnclosingElement().getSimpleName().toString();
+    } else {
+      return element.getEnclosingElement().getSimpleName().toString().toLowerCase();
+    }
   }
 
   protected static String getInstanceDescription(Element element) {
@@ -387,6 +391,9 @@ public class BaseWriter {
       String s = tags.get(0);
       return s.substring(s.indexOf(" "));
     }
+    // if (!element.getModifiers().contains(Modifier.STATIC)) {
+    //   return "any object of type " + element.getEnclosingElement().getSimpleName().toString();
+    // }
     return "";
   }
 
