@@ -78,8 +78,9 @@ if [ $# -eq 0 -o "$1" = 'sound' ]; then
 		exit 1
 	fi
 
-# sound library reference needs a clean slate to handle subclass documentation correctly
-	rm $REFERENCES_OUT_PATH/sound/*
+	# sound library reference needs a clean slate to generate subclass 
+	# documentation correctly
+	rm -f $REFERENCES_OUT_PATH/sound/*
 fi
 
 echo "[REFERENCE GENERATOR] Generating new javadocs..."
@@ -171,12 +172,14 @@ if [ $# -eq 0 -o "$1" = 'sound' ]; then
 	cd $REFERENCES_OUT_PATH/sound
 	superclass=SoundObject subclasses="AudioIn Noise Oscillator" CopyAndReplace # TODO AudioSample ??
 
+	# superclass=AudioSample subclasses="SoundFile" CopyAndReplace
 	superclass=Oscillator subclasses="Pulse SawOsc SinOsc SqrOsc TriOsc" CopyAndReplace
 	superclass=Noise subclasses="BrownNoise PinkNoise WhiteNoise" CopyAndReplace
-	superclass=Effect subclasses="AllPass BandPass Delay HighPass LowPass Reverb" CopyAndReplace
-	superclass=Analyzer subclasses="Amplitude BeatDetector FFT Waveform" CopyAndReplace
 
-	# superclass=AudioSample subclasses="SoundFile" CopyAndReplace
+	superclass=Effect subclasses="AllPass Delay Filter Reverb" CopyAndReplace
+	superclass=Filter subclasses="BandPass HighPass LowPass" CopyAndReplace
+
+	superclass=Analyzer subclasses="Amplitude BeatDetector FFT PitchDetector Waveform" CopyAndReplace
 	cd "$THISDIR"
 	echo "Sound library post-processing completed."
 fi
