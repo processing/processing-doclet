@@ -368,17 +368,23 @@ public class BaseWriter {
   }
 
   protected static String getInstanceName(Element element) {
-    List<String> tags = Shared
-      .i()
-      .getTags(element.getEnclosingElement())
-      .get("instanceName");
-    if (tags != null && tags.size() > 0) {
-      return tags.get(0).split("\\s")[0];
-    }
     if (element.getModifiers().contains(Modifier.STATIC)) {
+      // always use original class name for static methods
       return element.getEnclosingElement().getSimpleName().toString();
     } else {
-      return element.getEnclosingElement().getSimpleName().toString().toLowerCase();
+      // TODO add some coloration and/or italics around the instance name to 
+      // signify "this can/needs to be changed"
+      List<String> tags = Shared
+        .i()
+        .getTags(element.getEnclosingElement())
+        .get("instanceName");
+      if (tags != null && tags.size() > 0) {
+        // use the javadoc @instanceName if there is one
+        return tags.get(0).split("\\s")[0];
+      } else {
+        // if none, default to "myClassName"
+        return "my" + element.getEnclosingElement().getSimpleName().toString();
+      }
     }
   }
 
@@ -391,9 +397,9 @@ public class BaseWriter {
       String s = tags.get(0);
       return s.substring(s.indexOf(" "));
     }
-    // if (!element.getModifiers().contains(Modifier.STATIC)) {
-    //   return "any object of type " + element.getEnclosingElement().getSimpleName().toString();
-    // }
+    if (!element.getModifiers().contains(Modifier.STATIC)) {
+      return "any variable of type " + element.getEnclosingElement().getSimpleName().toString();
+    }
     return "";
   }
 
