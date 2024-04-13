@@ -368,14 +368,24 @@ public class BaseWriter {
   }
 
   protected static String getInstanceName(Element element) {
-    List<String> tags = Shared
-      .i()
-      .getTags(element.getEnclosingElement())
-      .get("instanceName");
-    if (tags != null && tags.size() > 0) {
-      return tags.get(0).split("\\s")[0];
+    if (element.getModifiers().contains(Modifier.STATIC)) {
+      // always use original class name for static methods
+      return element.getEnclosingElement().getSimpleName().toString();
+    } else {
+      // TODO add some coloration and/or italics around the instance name to 
+      // signify "this can/needs to be changed"
+      List<String> tags = Shared
+        .i()
+        .getTags(element.getEnclosingElement())
+        .get("instanceName");
+      if (tags != null && tags.size() > 0) {
+        // use the javadoc @instanceName if there is one
+        return tags.get(0).split("\\s")[0];
+      } else {
+        // if none, default to "myClassName"
+        return "my" + element.getEnclosingElement().getSimpleName().toString();
+      }
     }
-    return "";
   }
 
   protected static String getInstanceDescription(Element element) {
@@ -386,6 +396,9 @@ public class BaseWriter {
     if (tags != null && tags.size() > 0) {
       String s = tags.get(0);
       return s.substring(s.indexOf(" "));
+    }
+    if (!element.getModifiers().contains(Modifier.STATIC)) {
+      return "your " + element.getEnclosingElement().getSimpleName().toString() + " object";
     }
     return "";
   }
