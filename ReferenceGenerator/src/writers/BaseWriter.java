@@ -398,7 +398,7 @@ public class BaseWriter {
       return s.substring(s.indexOf(" "));
     }
     if (!element.getModifiers().contains(Modifier.STATIC)) {
-      return "any variable of type " + element.getEnclosingElement().getSimpleName().toString();
+      return "your " + element.getEnclosingElement().getSimpleName().toString() + " object";
     }
     return "";
   }
