@@ -50,8 +50,9 @@ Now you are ready to run the doclet:
 
 1. `cd` into the `processing-doclet/ReferenceGenerator` folder.
 2. Run `ant compile`.
-3. Run `./processingrefBuild.sh` if you are updating all the repositories or `./processingrefBuild.sh processing`, `./processingrefBuild.sh sound` or `./processingrefBuild.sh video` if you are updating a single repository.
-4. After the new JSON files are created, move into `processing-website` and run `npx prettier --write content/references` to format the JSON files.
+3. Run `./processingrefBuild.sh` if you are updating all the repositories or `./processingrefBuild.sh processing`, `./processingrefBuild.sh sound` or `./processingrefBuild.sh video` if you are updating a single repository. The script requires the following external dependencies to run successfully:
+	- all repositories: `npx` for pretty-fying the doclet JSON
+	- sound library only: `jq` and `sponge` for post-processing the documentation of subclasses. Install the dependencies by calling `apt-get/brew install jq moreutils`
 
 ### Update the website
 
